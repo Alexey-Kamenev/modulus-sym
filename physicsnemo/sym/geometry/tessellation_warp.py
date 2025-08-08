@@ -35,6 +35,7 @@ def compute_triangle_areas_warp(
     areas: wp.array(dtype=float),
 ):
     """Warp kernel to compute triangle areas."""
+    # This is a warp implementation of the _area_of_triangles function in tessellation.py.
     tid = wp.tid()
 
     # Get triangle vertices.
@@ -68,6 +69,7 @@ def sample_triangles_warp(
     normal_z: wp.array(dtype=float),
 ):
     """Warp kernel to sample points on triangles using barycentric coordinates."""
+    # This is a warp implementation of the _sample_triangle function in tessellation.py.
     tid = wp.tid()
 
     # Get triangle index for this point.
@@ -140,7 +142,7 @@ class WarpTessellationSampler:
         self.normals_wp = wp.array(normals_data, dtype=wp.vec3, device=self.device)
 
         # Pre-compute triangle areas.
-        self.areas_wp = wp.zeros(self.num_triangles, dtype=float, device=self.device)
+        self.areas_wp = wp.zeros(self.num_triangles, device=self.device)
         wp.launch(
             compute_triangle_areas_warp,
             dim=self.num_triangles,
@@ -197,12 +199,12 @@ class WarpTessellationSampler:
         r2_wp = wp.array(r2, dtype=float, device=self.device)
 
         # Step 4: Create output arrays.
-        points_x_wp = wp.zeros(nr_points, dtype=float, device=self.device)
-        points_y_wp = wp.zeros(nr_points, dtype=float, device=self.device)
-        points_z_wp = wp.zeros(nr_points, dtype=float, device=self.device)
-        normal_x_wp = wp.zeros(nr_points, dtype=float, device=self.device)
-        normal_y_wp = wp.zeros(nr_points, dtype=float, device=self.device)
-        normal_z_wp = wp.zeros(nr_points, dtype=float, device=self.device)
+        points_x_wp = wp.zeros(nr_points, device=self.device)
+        points_y_wp = wp.zeros(nr_points, device=self.device)
+        points_z_wp = wp.zeros(nr_points, device=self.device)
+        normal_x_wp = wp.zeros(nr_points, device=self.device)
+        normal_y_wp = wp.zeros(nr_points, device=self.device)
+        normal_z_wp = wp.zeros(nr_points, device=self.device)
 
         # Step 5: Launch sampling kernel.
         wp.launch(
@@ -282,19 +284,10 @@ class TessellationWarp(Geometry):
         parameterization: Parameterization = Parameterization(),
         device: str = None,
     ):
-        def sample(
-            mesh,
-            warp_sampler,
-            nr_points,
-            parameterization=Parameterization(),
-            quasirandom=False,
-        ):
-            return warp_sampler.sample_warp(nr_points, parameterization, quasirandom)
-
         # Create curve with Warp-accelerated sampling.
         curves = [
             Curve(
-                partial(sample, mesh, WarpTessellationSampler(mesh, device=device)),
+                WarpTessellationSampler(mesh, device=device).sample_warp,
                 dims=3,
                 parameterization=parameterization,
             )
@@ -360,6 +353,7 @@ class TessellationWarp(Geometry):
 
     @staticmethod
     def sdf(triangles, airtight, invar, params, compute_sdf_derivatives=False):
+        """Simple copy of the sdf function in tessellation.py."""
         points = np.stack([invar["x"], invar["y"], invar["z"]], axis=1)
 
         minx, maxx, miny, maxy, minz, maxz = TessellationWarp.find_mins_maxs(points)
