@@ -123,10 +123,13 @@ class WarpTessellationSampler:
     device : str, optional
         Device to use for Warp operations ('cuda' or 'cpu').
         If None, automatically sets the device to the current device.
+    seed : int, optional
+        Seed for the random number generator. If None, uses default seeding.
     """
 
-    def __init__(self, mesh, device=None):
+    def __init__(self, mesh, device=None, seed=None):
         self.num_triangles = len(mesh.v0)
+        self.rng = np.random.default_rng(seed)
 
         self.device = device if device is not None else wp.get_device()
 
@@ -185,13 +188,13 @@ class WarpTessellationSampler:
         nr_points = int(nr_points)
 
         # Step 1: Distribute points across triangles based on area.
-        triangle_indices = np.random.choice(
+        triangle_indices = self.rng.choice(
             self.num_triangles, size=nr_points, p=self.triangle_probabilities
         )
 
         # Step 2: Generate random numbers for barycentric sampling.
-        r1 = np.random.uniform(0, 1, size=nr_points).astype(np.float32)
-        r2 = np.random.uniform(0, 1, size=nr_points).astype(np.float32)
+        r1 = self.rng.uniform(0, 1, size=nr_points).astype(np.float32)
+        r2 = self.rng.uniform(0, 1, size=nr_points).astype(np.float32)
 
         # Step 3: Create Warp arrays.
         triangle_indices_wp = wp.array(triangle_indices, dtype=int, device=self.device)
@@ -275,6 +278,8 @@ class TessellationWarp(Geometry):
     device : str, optional
         Device to use for Warp operations ('cuda' or 'cpu'). If None, automatically
         detects the best available device.
+    seed : int, optional
+        Seed for the random number generator. If None, uses default seeding.
     """
 
     def __init__(
@@ -283,11 +288,12 @@ class TessellationWarp(Geometry):
         airtight: bool = True,
         parameterization: Parameterization = Parameterization(),
         device: str = None,
+        seed: int = None,
     ):
         # Create curve with Warp-accelerated sampling.
         curves = [
             Curve(
-                WarpTessellationSampler(mesh, device=device).sample_warp,
+                WarpTessellationSampler(mesh, device=device, seed=seed).sample_warp,
                 dims=3,
                 parameterization=parameterization,
             )
@@ -326,6 +332,7 @@ class TessellationWarp(Geometry):
         airtight=True,
         parameterization=Parameterization(),
         device=None,
+        seed=None,
     ):
         """
         Create a TessellationWarp geometry from an STL file.
@@ -341,6 +348,8 @@ class TessellationWarp(Geometry):
         device : str, optional
             Device to use for Warp operations ('cuda' or 'cpu'). If None, automatically
             detects the best available device.
+        seed : int, optional
+            Seed for the random number generator. If None, uses default seeding.
 
         Returns
         -------
@@ -349,7 +358,7 @@ class TessellationWarp(Geometry):
         """
         # Read in mesh.
         mesh = np_mesh.Mesh.from_file(filename)
-        return cls(mesh, airtight, parameterization, device)
+        return cls(mesh, airtight, parameterization, device, seed)
 
     @staticmethod
     def sdf(triangles, airtight, invar, params, compute_sdf_derivatives=False):

@@ -510,7 +510,7 @@ class Geometry:
                     criteria=closed_boundary_criteria,
                     parameterization=parameterization,
                 )
-                i["area"] = np.full_like(i["area"], a / n)
+                i["area"][:, 0] = a / n
                 list_invar.append(i)
                 list_params.append(p)
         invar = _concat_numpy_dict_list(list_invar)
