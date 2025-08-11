@@ -263,9 +263,9 @@ class WarpTessellationSampler:
         return invar, params
 
 
-class TessellationWarp(Geometry):
+class Tessellation(Geometry):
     """
-    TessellationWarp is a geometry that uses Warp to accelerate the sampling of a tessellated geometry.
+    Tessellation is a geometry that uses Warp to accelerate the sampling of a tessellated geometry.
 
     Parameters
     ----------
@@ -319,7 +319,7 @@ class TessellationWarp(Geometry):
 
         super().__init__(
             curves,
-            partial(TessellationWarp.sdf, mesh.vectors, airtight),
+            partial(Tessellation.sdf, mesh.vectors, airtight),
             dims=3,
             bounds=bounds,
             parameterization=parameterization,
@@ -335,7 +335,7 @@ class TessellationWarp(Geometry):
         seed=None,
     ):
         """
-        Create a TessellationWarp geometry from an STL file.
+        Create a Tessellation geometry from an STL file.
 
         Parameters
         ----------
@@ -353,8 +353,8 @@ class TessellationWarp(Geometry):
 
         Returns
         -------
-        TessellationWarp
-            An instance of TessellationWarp initialized with the mesh from the STL file.
+        Tessellation
+            An instance of Tessellation initialized with the mesh from the STL file.
         """
         # Read in mesh.
         mesh = np_mesh.Mesh.from_file(filename)
@@ -365,7 +365,7 @@ class TessellationWarp(Geometry):
         """Simple copy of the sdf function in tessellation.py."""
         points = np.stack([invar["x"], invar["y"], invar["z"]], axis=1)
 
-        minx, maxx, miny, maxy, minz, maxz = TessellationWarp.find_mins_maxs(points)
+        minx, maxx, miny, maxy, minz, maxz = Tessellation.find_mins_maxs(points)
         max_dis = max(max((maxx - minx), (maxy - miny)), (maxz - minz))
         store_triangles = np.array(triangles, dtype=np.float64)
         store_triangles[:, :, 0] -= minx
